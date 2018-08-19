@@ -53,29 +53,30 @@ SOFTWARE.
 #include "OctoPrintClient.h"
 #include "AdviceSlipClient.h"
 #include "BitcoinApiClient.h"
+#include "NextripClient.h"
 
 //******************************
 // Start Settings
 //******************************
 
-String APIKEY = ""; // Your API Key from http://openweathermap.org/
+String APIKEY = "a3d94ab558e994017bb76cd6291ff779"; // Your API Key from http://openweathermap.org/
 // Default City Location (use http://openweathermap.org/find to find city ID)
-int CityIDs[] = { 5304391 }; //Only USE ONE for weather marquee
+int CityIDs[] = { 5045360 }; //Only USE ONE for weather marquee
 String marqueeMessage = "";
-boolean IS_METRIC = false; // false = Imperial and true = Metric
-boolean IS_24HOUR = false; // 23:00 millitary 24 hour clock
+boolean IS_METRIC = true; // false = Imperial and true = Metric
+boolean IS_24HOUR = true; // 23:00 millitary 24 hour clock
 const int WEBSERVER_PORT = 80; // The port you can access this device on over HTTP
 const boolean WEBSERVER_ENABLED = true;  // Device will provide a web interface via http://[ip]:[port]/
 boolean IS_BASIC_AUTH = true;  // Use Basic Authorization for Configuration security on Web Interface
-char* www_username = "admin";  // User account for the Web Interface
-char* www_password = "password";  // Password for the Web Interface
+const char* www_username = "admin";  // User account for the Web Interface
+const char* www_password = "password";  // Password for the Web Interface
 int minutesBetweenDataRefresh = 15;  // Time in minutes between data refresh (default 15 minutes)
 int minutesBetweenScrolling = 1; // Time in minutes between scrolling data (default 1 minutes and max is 10)
-int displayScrollSpeed = 25; // In milliseconds -- Configurable by the web UI (slow = 35, normal = 25, fast = 15)
+int displayScrollSpeed = 20; // In milliseconds -- Configurable by the web UI (slow = 35, normal = 25, fast = 15)
 
-boolean NEWS_ENABLED = true;
+boolean NEWS_ENABLED = false;
 String NEWS_API_KEY = ""; // Get your News API Key from https://newsapi.org
-String NEWS_SOURCE = "reuters";  // https://newsapi.org/sources to get full list of news sources available
+String NEWS_SOURCE = "";  // https://newsapi.org/sources to get full list of news sources available
 
 boolean ADVICE_ENABLED = false;
 
@@ -85,11 +86,11 @@ boolean ADVICE_ENABLED = false;
 // DIN -> D7 (MOSI)
 const int pinCS = D6; // Attach CS to this pin, DIN to MOSI and CLK to SCK (cf http://arduino.cc/en/Reference/SPI )
 int displayIntensity = 1;  //(This can be set from 1 - 15)
-const int numberOfHorizontalDisplays = 4; // default 4 for standard 4 x 1 display Max size of 16
+const int numberOfHorizontalDisplays = 8; // default 4 for standard 4 x 1 display Max size of 16
 const int numberOfVerticalDisplays = 1; // default 1 for a single row height
 
 String timeDisplayTurnsOn = "06:30";  // 24 Hour Format HH:MM -- Leave blank for always on. (ie 05:30)
-String timeDisplayTurnsOff = "23:00"; // 24 Hour Format HH:MM -- Leave blank for always on. Both must be set to work.
+String timeDisplayTurnsOff = "22:30"; // 24 Hour Format HH:MM -- Leave blank for always on. Both must be set to work.
 
 const String GEONAMES_USER = "qrome"; // user account for  http://www.geonames.org/ -- this service is used to lookup TimeZone Offsets
 
@@ -103,6 +104,10 @@ String OctoAuthPass = "";      // only used with haproxy or basic auth (only nee
 
 // Bitcoin Client - NONE or empty is off
 String BitcoinCurrencyCode = "NONE";  // Change to USD, GBD, EUR, or NONE -- this can be managed in the Web Interface
+
+// Nextrip Client - MetroTransit Bus Departure Times
+boolean NEXTRIP_ENABLED = true;
+String NEXTRIP_STOP_ID = "56038";
 
 boolean ENABLE_OTA = true;  // this will allow you to load firmware to the device over WiFi (see OTA for ESP8266)
 String OTA_Password = "";      // Set an OTA password here -- leave blank if you don't want to be prompted for password

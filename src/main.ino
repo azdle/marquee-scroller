@@ -78,7 +78,7 @@ AdviceSlipClient adviceClient;
 // Weather Client
 OpenWeatherMapClient weatherClient(APIKEY, CityIDs, 1, IS_METRIC);
 // (some) Default Weather Settings
-boolean SHOW_CITY = true;
+boolean SHOW_CITY = false;
 boolean SHOW_CONDITION = true;
 boolean SHOW_HUMIDITY = true;
 boolean SHOW_WIND = true;
@@ -89,6 +89,10 @@ int printerCount = 0;
 
 // Bitcoin Client
 BitcoinApiClient bitcoinClient;
+
+// Nextrip Client
+NextripClient nextripClient(NEXTRIP_STOP_ID);
+long nextNextripRefresh = 0;
 
 ESP8266WebServer server(WEBSERVER_PORT);
                       
@@ -160,7 +164,7 @@ int externalLight = LED_BUILTIN; // LED_BUILTIN is is the built in LED on the We
 void setup() {
   Serial.begin(115200);
   SPIFFS.begin();
-  //SPIFFS.remove(CONFIG);
+  SPIFFS.remove(CONFIG);
   delay(10);
   
   // Initialize digital pin for LED
@@ -183,27 +187,9 @@ void setup() {
 
   Serial.println("matrix created");
   matrix.fillScreen(LOW); // show black
-  centerPrint("hello");
+  centerPrint("Yo!");
 
-  tone(BUZZER_PIN, 415, 500);
-  delay(500*1.3);
-  tone(BUZZER_PIN, 466, 500);
-  delay(500*1.3);
-  tone(BUZZER_PIN, 370, 1000);
-  delay(1000*1.3);
-  noTone(BUZZER_PIN);
-  
-  for (int inx = 0; inx <= 15; inx++) {
-    matrix.setIntensity(inx);
-    delay(100);
-  }
-  for (int inx = 15; inx > 0; inx--) {
-    matrix.setIntensity(inx);
-    delay(60);
-  }
-  delay(1000);
   matrix.setIntensity(displayIntensity);
-  //noTone(BUZZER_PIN);
 
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
@@ -297,6 +283,13 @@ void loop() {
     getWeatherData();
   }
 
+  // needs to refresh more often than weather (and eveything else in there)
+  if (NEXTRIP_ENABLED && displayOn && nextNextripRefresh < timeClient.getCurrentEpoch()) {
+    nextNextripRefresh = timeClient.getCurrentEpoch() + 30;
+    Serial.println("Async Fetching Nextrip Departures");
+    nextripClient.updateDepartures();
+  }
+
   checkDisplay(); // this will see if we need to turn it on or off for night mode.
 
   if (lastMinute != timeClient.getMinutes()) {
@@ -334,12 +327,12 @@ void loop() {
         msg += description + "    ";
       }
       if (SHOW_HUMIDITY) {
-        msg += "Humidity:" + weatherClient.getHumidityRounded(0) + "%   ";
+        msg += "RH:" + weatherClient.getHumidityRounded(0) + "%  ";
       }
       if (SHOW_WIND) {
         msg += "Wind:" + weatherClient.getWindRounded(0) + getSpeedSymbol() + "  ";
       }
-      
+
       msg += marqueeMessage + " ";
 
       if (NEWS_ENABLED) {
@@ -349,17 +342,24 @@ void loop() {
           newsIndex = 0;
         }
       }
+
       if (ADVICE_ENABLED) {
         msg += "  Advice: " + adviceClient.getAdvice() + " ";
       }
+
       if (OCTOPRINT_ENABLED && printerClient.isPrinting()) {
         msg += "   " + printerClient.getFileName() + " ";
         msg += "(" + printerClient.getProgressCompletion() + "%)   ";
       }
+
       if (BitcoinCurrencyCode != "NONE" && BitcoinCurrencyCode != "") {
         msg += "    Bitcoin: " + bitcoinClient.getRate() + " " + bitcoinClient.getCode() + " ";
       }
-    
+
+      if (NEXTRIP_ENABLED) {
+        msg += "   NexTrip: " + nextripClient.getDepartures();
+      }
+
       scrollMessage(msg);
     }
   }
@@ -369,7 +369,14 @@ void loop() {
     hourMinutes = timeClient.getHours() + ":" + timeClient.getMinutes();
   }
   if (numberOfHorizontalDisplays >= 8) {
-    if (Wide_Clock_Style == "1") {
+    if (NEXTRIP_ENABLED) {
+      String next = nextripClient.getFirstDeparture();
+      String timeSpacer = "  ";
+      if (next.length() >= 3) {
+        timeSpacer = " ";
+      }
+      hourMinutes += timeSpacer + next;
+    } else if (Wide_Clock_Style == "1") {
       // On Wide Display -- show the current temperature as well
       String currentTemp = weatherClient.getTempRounded(0);
       String timeSpacer = "  ";
@@ -377,14 +384,14 @@ void loop() {
         timeSpacer = " ";
       }
       hourMinutes += timeSpacer + currentTemp + getTempSymbol();
-    }
-    if (Wide_Clock_Style == "2") {
+    } else if (Wide_Clock_Style == "2") {
       hourMinutes += ":" + timeClient.getSeconds();
       matrix.fillScreen(LOW); // show black
-    }
-    if (Wide_Clock_Style == "3") {
+    } else if (Wide_Clock_Style == "3") {
       // No change this is normal clock display
     }
+
+
   }
   centerPrint(hourMinutes);
   
@@ -833,7 +840,7 @@ void getWeatherData() //client function to send/receive GET request data.
   if (displayOn) {
     bitcoinClient.updateBitcoinData(BitcoinCurrencyCode);  // does nothing if BitCoinCurrencyCode is "NONE" or empty
   }
-  
+
   matrix.fillScreen(LOW); // show black
   Serial.println("Version: " + String(VERSION));
   Serial.println();
@@ -1411,6 +1418,7 @@ void scrollMessage(String msg) {
 
 void centerPrint(String msg) {
   int x = (matrix.width() - (msg.length() * width)) / 2;
+  matrix.fillScreen(LOW);
   matrix.setCursor(x, 0);
   matrix.print(msg);
   matrix.write();
